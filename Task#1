@@ -1,0 +1,92 @@
+import requests
+from bs4 import BeautifulSoup
+import urllib.parse
+from datetime import datetime, time, timedelta
+import time
+import re
+import json
+
+from fake_useragent import UserAgent
+ua = UserAgent()
+
+# Get a random browser user-agent string
+
+fake_user = ua.random # создаю фейкового юзера
+
+# Запрос веб-страницы
+url = 'https://hh.ru/search/vacancy?text=Data+science&from=suggest_post&area=1&hhtmFrom=main&hhtmFromLabel=vacancy_search_line'
+response = requests.get(url, headers = {'User-Agent' : fake_user})
+
+# Парсинг HTML-содержимого веб-страницы с помощью Beautiful Soup
+soup = BeautifulSoup(response.content, 'html.parser')
+
+#
+# Вывод ссылок на
+release_links = []
+for link in soup.find_all('div', ('class', 'magritte-card___bhGKz_6-1-14 magritte-card-border-radius-24___o72BE_6-1-14 magritte-card-stretched___0Uc0J_6-1-14 magritte-card-action___4A43B_6-1-14 magritte-card-shadow-on-hover___BoRL3_6-1-14 magritte-card-with-border___3KsrG_6-1-14')):
+    try:
+        release_links.append(link.find('a').get('href'))
+    except:
+        release_links.append('None')
+
+
+# Объединение ссылок с базовым URL-адресом для создания списка URL-адресов
+# url_joined = []
+# for link in release_links:
+#   url_joined.append(urllib.parse.urljoin(url, link))
+# print(url_joined)
+
+#Извлечение данных из таблицы построково и сохранение их в списке словарей
+data = []
+count = 0
+for url in release_links:
+    try:
+        count += 1
+        print('Шаг: ', count, ' URL:', url)
+        if count == 5:
+            break
+        response = requests.get(url, headers = {'User-Agent' : fake_user})
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        table = soup.find('div', {'class': 'magritte-card___bhGKz_6-1-14'})
+        print(table)
+        row_data = {}
+
+        name_vacancy = soup.find('h1', {'class': 'magritte-text___gMq2l_5-0-9'})
+        print(name_vacancy)
+        salary = soup.find('span', {'class': 'magritte-text___pbpft_3-0-18'})
+        print(salary)
+
+        data.append(row_data)
+
+        time.sleep(5)
+    except:
+        pass
+
+
+
+    #     row_data={}
+    #     for row in rows:
+    #         key = row.find('span').text.strip()
+    #         value = row.find_all('span')[1].text.strip()
+    #         if key == 'Opening':
+    #             value = int(re.sub('[^0-9]', '', value))
+    #         elif key == 'Release Date':
+    #             value = value
+    #         elif key == 'Running Time':
+    #             time_delta = datetime.strptime(value, '%H hr %M min') - datetime(1900, 1, 1)
+    #             value = time_delta.total_seconds()
+    #         elif key == 'Genres':
+    #             value = [genre.strip() for genre in value.split('\n') if genre.strip()]
+    #         elif key == 'In Release':
+    #             value = value.replace(' days/3 weeks', '').strip()
+    #         elif key == 'Widest Release':
+    #             value = int(re.sub('[^0-9]', '', value))
+    #
+    #         row_data[key] = value
+    #
+
+# print(data)
+# # сохранение данных в JSON-файл
+# with open('box_office_data.json', 'w') as f:
+#     json.dump(data, f)
