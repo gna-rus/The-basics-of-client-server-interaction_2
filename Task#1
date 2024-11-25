@@ -16,7 +16,8 @@ ua = UserAgent()
 fake_user = ua.random # создаю фейкового юзера
 
 # Запрос веб-страницы
-url = 'https://hh.ru/search/vacancy?text=Data+science&from=suggest_post&area=1&hhtmFrom=main&hhtmFromLabel=vacancy_search_line'
+name_work = 'Data+science'
+url = f'https://hh.ru/search/vacancy?text={name_work}&from=suggest_post&area=1&hhtmFrom=main&hhtmFromLabel=vacancy_search_line'
 response = requests.get(url, headers = {'User-Agent' : fake_user})
 
 # Парсинг HTML-содержимого веб-страницы с помощью Beautiful Soup
@@ -45,7 +46,13 @@ def info_about_work(text, teg):
 
 def dict_about_all_work(tabel, workgiver):
     dict = {}
-    dict[tabel[0]] = [workgiver[-1], tabel[1:3], tabel[4]]
+    tabel.remove(' ')
+    print('до ' in tabel)
+    if 'Уровень дохода не указан' in tabel:
+        dict[tabel[0]] = [workgiver[-1], tabel[1:3], tabel[4:5]]
+    elif 'до ' in tabel:
+
+        dict[tabel[0]] = [workgiver[-1], tabel[1:3], tabel[5:6]]
     return dict
 
 
@@ -61,23 +68,27 @@ for url in release_links:
         table = info_about_work(soup, 'magritte-card___bhGKz_6-1-14')
         print(table)
 
+
         work_giver = info_about_work(soup, 'magritte-h-spacing-container___rrYJZ_2-0-31')
         print(work_giver)
 
         if work_giver == 'error' or table == 'error':
             continue
 
+        data_dict = {}
+
+
         print(dict_about_all_work(table, work_giver))
+        print(data_dict)
 
         count += 1
-        if count == 5:
+        if count == 10:
             break
 
         time.sleep(5)
 
     except:
         pass
-
 
 
 
