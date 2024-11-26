@@ -12,19 +12,18 @@ ua = UserAgent()
 
 
 # Get a random browser user-agent string
-
 fake_user = ua.random # создаю фейкового юзера
 
 # Запрос веб-страницы
-name_work = 'Data+science'
+name_work = 'Data+science' # Провожу поиск на сайте по этому тексту
 url = f'https://hh.ru/search/vacancy?text={name_work}&from=suggest_post&area=1&hhtmFrom=main&hhtmFromLabel=vacancy_search_line'
-response = requests.get(url, headers = {'User-Agent' : fake_user})
+response = requests.get(url, headers = {'User-Agent' : fake_user}) # Получаю get запрос по API
 
 # Парсинг HTML-содержимого веб-страницы с помощью Beautiful Soup
 soup = BeautifulSoup(response.content, 'html.parser')
 
 #
-# Вывод ссылок на
+# Создаю списко ссылок вакансий
 release_links = []
 for link in soup.find_all('div', ('class', 'magritte-card___bhGKz_6-1-14 magritte-card-border-radius-24___o72BE_6-1-14 magritte-card-stretched___0Uc0J_6-1-14 magritte-card-action___4A43B_6-1-14 magritte-card-shadow-on-hover___BoRL3_6-1-14 magritte-card-with-border___3KsrG_6-1-14')):
     try:
@@ -33,18 +32,24 @@ for link in soup.find_all('div', ('class', 'magritte-card___bhGKz_6-1-14 magritt
         release_links.append('None')
 
 
-#Извлечение данных из таблицы построково и сохранение их в списке словарей
+
 
 def info_about_work(text, teg):
+    """Функция извлечения информации со страницы о вакансии
+    На вход подается результат парсинга HTML-содержимого веб-страницы с помощью Beautiful Soup и
+    class по которому будет проводиться поиск содержимого.
+    На выход передается или общая информация о вакансии или название кампании"""
     table = text.find('div', {'class': teg})
-    # class="magritte-h-spacing-container___rrYJZ_2-0-31"
-
     if not table:
         return 'error'
     else:
         return table.get_text("|||").split("|||")
 
 def dict_about_all_work(tabel, workgiver):
+    """Функция форматирования и обработки данных о вакансии
+    На вход подается результат обработки страницы и
+    и название компании
+    """
     dict = {}
     tabel.remove(' ')
 
@@ -60,33 +65,34 @@ def dict_about_all_work(tabel, workgiver):
 
 
 data = {}
+lim = 5 # задаю количестко вакансий которое необходимо обработать
 count = 1
 for url in release_links:
     try:
-        print('Шаг: ', count, ' URL:', url)
+        print('Шаг: ', count, ' URL:', url) # 
 
-        response = requests.get(url, headers = {'User-Agent' : fake_user})
-        soup = BeautifulSoup(response.content, 'html.parser')
+        response = requests.get(url, headers = {'User-Agent' : fake_user}) # провожу get запрос по API для отдельной взятой вакансии
+        soup = BeautifulSoup(response.content, 'html.parser') # Парсинг HTML-содержимого веб-страницы с помощью Beautiful Soup
         table = info_about_work(soup, 'magritte-card___bhGKz_6-1-14')
-
 
         work_giver = info_about_work(soup, 'magritte-h-spacing-container___rrYJZ_2-0-31')
 
+        # Проверка, если не получилось распирсить страницу то цикл прерывается
         if work_giver == 'error' or table == 'error':
             continue
 
         data_dict = {}
 
-
-        data_dict = dict_about_all_work(table, work_giver)
+        data_dict = dict_about_all_work(table, work_giver) # Получаем словарь где ключ - это название вакансии,
+                                                           # а значение содержит список с названием капании, требованием по опыты и з\п
         print(data_dict)
 
         count += 1
-        if count == 5:
+        if count == lim:
             break
 
         time.sleep(5)
-        data.update(data_dict)
+        data.update(data_dict) # Создаю большой списко в который записываются все результаты обработки вакансий
 
     except:
         pass
