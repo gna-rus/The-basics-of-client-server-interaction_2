@@ -47,7 +47,7 @@ def info_about_work(text, teg):
 def dict_about_all_work(tabel, workgiver):
     dict = {}
     tabel.remove(' ')
-    print('до ' in tabel)
+
     if 'Уровень дохода не указан' in tabel:
         dict[tabel[0]] = [workgiver[-1], tabel[1], "".join(tabel[2:5])]
     elif 'до ' in tabel:
@@ -67,13 +67,10 @@ for url in release_links:
 
         response = requests.get(url, headers = {'User-Agent' : fake_user})
         soup = BeautifulSoup(response.content, 'html.parser')
-
         table = info_about_work(soup, 'magritte-card___bhGKz_6-1-14')
-        print(table)
 
 
         work_giver = info_about_work(soup, 'magritte-h-spacing-container___rrYJZ_2-0-31')
-        print(work_giver)
 
         if work_giver == 'error' or table == 'error':
             continue
@@ -81,43 +78,20 @@ for url in release_links:
         data_dict = {}
 
 
-        print(dict_about_all_work(table, work_giver))
-
+        data_dict = dict_about_all_work(table, work_giver)
+        print(data_dict)
 
         count += 1
-        if count == 15:
+        if count == 5:
             break
 
         time.sleep(5)
+        data.update(data_dict)
 
     except:
         pass
 
-
-
-
-    #     row_data={}
-    #     for row in rows:
-    #         key = row.find('span').text.strip()
-    #         value = row.find_all('span')[1].text.strip()
-    #         if key == 'Opening':
-    #             value = int(re.sub('[^0-9]', '', value))
-    #         elif key == 'Release Date':
-    #             value = value
-    #         elif key == 'Running Time':
-    #             time_delta = datetime.strptime(value, '%H hr %M min') - datetime(1900, 1, 1)
-    #             value = time_delta.total_seconds()
-    #         elif key == 'Genres':
-    #             value = [genre.strip() for genre in value.split('\n') if genre.strip()]
-    #         elif key == 'In Release':
-    #             value = value.replace(' days/3 weeks', '').strip()
-    #         elif key == 'Widest Release':
-    #             value = int(re.sub('[^0-9]', '', value))
-    #
-    #         row_data[key] = value
-    #
-
-# print(data)
-# # сохранение данных в JSON-файл
-# with open('box_office_data.json', 'w') as f:
-#     json.dump(data, f)
+print('Результат: \n',data)
+# сохранение данных в JSON-файл
+with open('data.json', 'w', encoding="utf-8") as f:
+    json.dump(data, f)
