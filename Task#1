@@ -1,3 +1,12 @@
+from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait # подгрузка метода ожидания загрузки страницы
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.action_chains import ActionChains # реализация прокрутки страницы к необходимому элементу
+
 import requests
 from bs4 import BeautifulSoup
 import urllib.parse
@@ -5,99 +14,66 @@ from datetime import datetime, time, timedelta
 import time
 import re
 import json
-
-from fake_useragent import UserAgent
-ua = UserAgent()
+from pprint import pprint
 
 
+from selenium import webdriver
+import time
 
-# Get a random browser user-agent string
-fake_user = ua.random # создаю фейкового юзера
+# Настройки параметров ссесии браузера
+option = webdriver.ChromeOptions()
+# option = webdriver.FirefoxOptions()
 
-# Запрос веб-страницы
-name_work = 'Data+science' # Провожу поиск на сайте по этому тексту
-url = f'https://hh.ru/search/vacancy?text={name_work}&from=suggest_post&area=1&hhtmFrom=main&hhtmFromLabel=vacancy_search_line'
-response = requests.get(url, headers = {'User-Agent' : fake_user}) # Получаю get запрос по API
+option.add_argument("start-maximized")
 
+# создаю окно браузера и передаю ему параметры
+browser = webdriver.Chrome(options=option)
+# browser = webdriver.Firefox(options=option)
+
+browser.get('https://www.foroffice.ru/') # вызываю страницу сайта промышленного оборудования в браузере
+
+
+
+# wait = WebDriverWait(browser, 30)
+# Ввожу информацию в строку поиска и кликаю на "лупу" для осуществления поиска по сайту
+input_web = browser.find_element(By.ID, "__BVID__17")
+input_web.send_keys('резак')
+element = WebDriverWait(browser, 20).until(EC.element_to_be_clickable((By.XPATH, '//button[@class="btn btn-blue search-button"]')))
+element.click()
+
+# Получаю url текущей страница
+current_url = str(browser.current_url).strip()
+# current_url = "https://www.foroffice.ru/search/search_results.php?q=%F0%E5%E7%E0%EA"
+
+# Так как ссылка на станицу от Selenium отличается от ссылки которую получаю при ручном поиске, и ссылка от Seleium не парсится, но эта ссылка содержит кодировку котурую можно применить для создания ссылки которую можно пропарсить
+print('URL:',current_url, sep='\n')
+print()
+find_key_word = current_url.find('q=')
+url =  f'https://www.foroffice.ru/products/search/?' + current_url[find_key_word:]
+fake_user = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0"
+response = requests.get(url, headers = {'User-Agent' : fake_user}, verify=False) # Получаю get запрос по API
+print(response, url)
+# , verify=False
 # Парсинг HTML-содержимого веб-страницы с помощью Beautiful Soup
 soup = BeautifulSoup(response.content, 'html.parser')
-
-#
-# Создаю списко ссылок вакансий
 release_links = []
-for link in soup.find_all('div', ('class', 'magritte-card___bhGKz_6-1-14 magritte-card-border-radius-24___o72BE_6-1-14 magritte-card-stretched___0Uc0J_6-1-14 magritte-card-action___4A43B_6-1-14 magritte-card-shadow-on-hover___BoRL3_6-1-14 magritte-card-with-border___3KsrG_6-1-14')):
+result_dict = {} # Словарь с информацией о товаре
+
+# Собираю информацию о товаре с первой странице
+print(soup.find_all('div', ('class', "center col")))
+for link, info in zip(soup.find_all('div', ('class', "center col")), soup.find_all('div', ('class', 'right col'))):
     try:
-        release_links.append(link.find('a').get('href'))
+        find_link= urljoin('https://www.foroffice.ru/', link.find('a').get('href')) # ссылка на
+        name_item = link.find('a').text.strip() # наименование товара
+
+        price = info.find('span').text.strip().split("\n") # вывожу стоимость товара и валюту в список
+        print(name_item, price, find_link)
+
+        result_dict[find_link] = [name_item, price]
     except:
         release_links.append('None')
 
-
-
-
-def info_about_work(text, teg):
-    """Функция извлечения информации со страницы о вакансии
-    На вход подается результат парсинга HTML-содержимого веб-страницы с помощью Beautiful Soup и
-    class по которому будет проводиться поиск содержимого.
-    На выход передается или общая информация о вакансии или название кампании"""
-    table = text.find('div', {'class': teg})
-    if not table:
-        return 'error'
-    else:
-        return table.get_text("|||").split("|||")
-
-def dict_about_all_work(tabel, workgiver):
-    """Функция форматирования и обработки данных о вакансии
-    На вход подается результат обработки страницы и
-    и название компании
-    """
-    dict = {}
-    tabel.remove(' ')
-
-    if 'Уровень дохода не указан' in tabel:
-        dict[tabel[0]] = [workgiver[-1], tabel[1], "".join(tabel[2:5])]
-    elif 'до ' in tabel:
-        salary = str(" ".join(tabel[1:6])).replace(r'\xa0000', 'тыс.')
-        dict[tabel[0]] = [workgiver[-1], salary, "".join(tabel[6:9])]
-    elif 'от ' in tabel:
-        salary = str(" ".join(tabel[1:6])).replace(r'\xa0000', 'тыс.')
-        dict[tabel[0]] = [workgiver[-1], salary, "".join(tabel[6:9])]
-    return dict
-
-
-data = {}
-lim = 5 # задаю количестко вакансий которое необходимо обработать
-count = 1
-for url in release_links:
-    try:
-        print('Шаг: ', count, ' URL:', url) # 
-
-        response = requests.get(url, headers = {'User-Agent' : fake_user}) # провожу get запрос по API для отдельной взятой вакансии
-        soup = BeautifulSoup(response.content, 'html.parser') # Парсинг HTML-содержимого веб-страницы с помощью Beautiful Soup
-        table = info_about_work(soup, 'magritte-card___bhGKz_6-1-14')
-
-        work_giver = info_about_work(soup, 'magritte-h-spacing-container___rrYJZ_2-0-31')
-
-        # Проверка, если не получилось распирсить страницу то цикл прерывается
-        if work_giver == 'error' or table == 'error':
-            continue
-
-        data_dict = {}
-
-        data_dict = dict_about_all_work(table, work_giver) # Получаем словарь где ключ - это название вакансии,
-                                                           # а значение содержит список с названием капании, требованием по опыты и з\п
-        print(data_dict)
-
-        count += 1
-        if count == lim:
-            break
-
-        time.sleep(5)
-        data.update(data_dict) # Создаю большой списко в который записываются все результаты обработки вакансий
-
-    except:
-        pass
-
-print('Результат: \n',data)
-# сохранение данных в JSON-файл
-with open('data.json', 'w', encoding="utf-8") as f:
-    json.dump(data, f)
+print(3)
+pprint(result_dict)
+input()
+browser.quit()
